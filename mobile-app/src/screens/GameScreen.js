@@ -20,9 +20,8 @@ const GameScreen = ({ route, navigation }) => {
   const [waiting, setWaiting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
-  const [roundInfo, setRoundInfo] = useState(null); // ✅ حالة الجولة
+  const [roundInfo, setRoundInfo] = useState(null);
 
-  // جلب حالة اللاعب من الخادم
   const fetchPlayerStatus = async () => {
     try {
       const response = await fetch(`http://localhost:3000/api/battle/status/${userId}`);
@@ -35,7 +34,6 @@ const GameScreen = ({ route, navigation }) => {
     }
   };
 
-  // جلب معلومات الجولة الحالية
   const fetchRoundInfo = async () => {
     try {
       const response = await fetch('http://localhost:3000/api/rounds/current');
@@ -50,15 +48,13 @@ const GameScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchPlayerStatus();
-    fetchRoundInfo(); // ✅ جلب معلومات الجولة عند تحميل الشاشة
+    fetchRoundInfo();
   }, []);
 
   useEffect(() => {
-    // الاتصال بالخادم عبر WebSocket
     socketManager.connect(userId, username);
     setConnected(true);
 
-    // استماع للأحداث
     socketManager.on('waiting', (msg) => {
       setWaiting(true);
     });
@@ -80,7 +76,6 @@ const GameScreen = ({ route, navigation }) => {
       Alert.alert(result.success ? '✅ نجاح' : '❌ فشل', result.message);
       if (result.newState) {
         setGameState(result.newState);
-        // تحديث حالة اللاعب بعد النشاط
         fetchPlayerStatus();
       }
     });
@@ -135,8 +130,9 @@ const GameScreen = ({ route, navigation }) => {
     setIsYourTurn(false);
   };
 
+  // ✅ تعديل دالة فتح السوق للانتقال إلى شاشة Market
   const openBlackMarket = () => {
-    Alert.alert('قريباً', 'السوق السوداء قيد التطوير');
+    navigation.navigate('Market', { userId, username });
   };
 
   if (!playerStatus) {
@@ -155,7 +151,6 @@ const GameScreen = ({ route, navigation }) => {
         <Text style={styles.welcome}>مرحباً، {username}</Text>
       </View>
 
-      {/* ✅ معلومات الجولة */}
       {roundInfo && (
         <View style={styles.roundInfo}>
           <Text style={styles.roundText}>🎯 الجولة رقم: {roundInfo.round_number}</Text>
@@ -165,7 +160,6 @@ const GameScreen = ({ route, navigation }) => {
         </View>
       )}
 
-      {/* معلومات اللاعب */}
       <View style={styles.playerInfo}>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>💰 المال:</Text>
@@ -185,7 +179,6 @@ const GameScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      {/* أزرار الإجراءات الرئيسية */}
       <View style={styles.actionsContainer}>
         <TouchableOpacity
           style={styles.joinButton}
@@ -203,7 +196,6 @@ const GameScreen = ({ route, navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* شاشة اللعبة (تظهر فقط عند وجود مباراة) */}
       {gameState && (
         <View style={styles.gameArea}>
           <View style={styles.gameHeader}>

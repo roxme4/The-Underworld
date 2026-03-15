@@ -9,7 +9,7 @@ const GangSystem = require('./utils/gangSystem.js');
 const SmartContractSystem = require('./utils/smartContracts.js');
 const BlackMarket = require('./utils/blackMarket.js');
 const BattleSystem = require('./utils/battleSystem.js');
-const RoundSystem = require('./utils/roundSystem.js'); // ✅ إضافة نظام الجولات
+const RoundSystem = require('./utils/roundSystem.js');
 const db = require('./db.js');
 
 const app = express();
@@ -20,13 +20,13 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 // ========== الأنظمة ==========
-let waitingPlayers = [];                // قائمة اللاعبين المنتظرين
-let activeGames = {};                   // الألعاب النشطة
-const gangSystem = new GangSystem();     // نظام العصابات (يعمل مع DB)
-const contractSystem = new SmartContractSystem(); // نظام العقود (يعمل مع DB)
-const blackMarket = new BlackMarket();   // نظام السوق السوداء
-const battleSystem = new BattleSystem(); // نظام المعارك
-const roundSystem = new RoundSystem();   // ✅ نظام الجولات
+let waitingPlayers = [];
+let activeGames = {};
+const gangSystem = new GangSystem();
+const contractSystem = new SmartContractSystem();
+const blackMarket = new BlackMarket();
+const battleSystem = new BattleSystem();
+const roundSystem = new RoundSystem();
 
 // ========== ربط socketId بمعرف اللاعب ==========
 const socketToPlayer = new Map();
@@ -206,26 +206,22 @@ app.get('/api/profile', async (req, res) => {
   }
 });
 
-// ========== مسارات العصابات (Gang System) ==========
-
+// ========== مسارات العصابات ==========
 app.post('/api/gangs/create', async (req, res) => {
   const { playerId, gangName, playerName } = req.body;
   const result = await gangSystem.createGang(playerId, gangName, playerName);
   res.json(result);
 });
-
 app.post('/api/gangs/invite', async (req, res) => {
   const { gangId, leaderId, targetPlayerId, targetPlayerName } = req.body;
   const result = await gangSystem.sendInvitation(gangId, leaderId, targetPlayerId, targetPlayerName);
   res.json(result);
 });
-
 app.post('/api/gangs/accept', async (req, res) => {
   const { playerId, gangId } = req.body;
   const result = await gangSystem.acceptInvitation(playerId, gangId);
   res.json(result);
 });
-
 app.get('/api/gangs/player/:playerId', async (req, res) => {
   const gang = await gangSystem.getPlayerGang(req.params.playerId);
   if (gang) {
@@ -234,7 +230,6 @@ app.get('/api/gangs/player/:playerId', async (req, res) => {
     res.json({ success: false, message: 'اللاعب ليس عضواً في أي عصابة' });
   }
 });
-
 app.get('/api/gangs/:gangId', async (req, res) => {
   const gang = await gangSystem.getGangInfo(req.params.gangId);
   if (gang) {
@@ -243,7 +238,6 @@ app.get('/api/gangs/:gangId', async (req, res) => {
     res.status(404).json({ success: false, message: 'عصابة غير موجودة' });
   }
 });
-
 app.get('/api/gangs/:gangId/stats', async (req, res) => {
   const stats = await gangSystem.getGangStats(req.params.gangId);
   if (stats) {
@@ -252,14 +246,12 @@ app.get('/api/gangs/:gangId/stats', async (req, res) => {
     res.status(404).json({ success: false, message: 'عصابة غير موجودة' });
   }
 });
-
 app.post('/api/gangs/contribute', async (req, res) => {
   const { playerId, gangId, amount } = req.body;
   try {
     const playerRes = await db.query('SELECT money FROM players WHERE id = $1', [playerId]);
     if (playerRes.rows.length === 0) return res.status(404).json({ success: false, message: 'Player not found' });
     if (playerRes.rows[0].money < amount) return res.json({ success: false, message: 'لا تملك هذا المبلغ' });
-
     const result = await gangSystem.contributeToGang(gangId, playerId, amount, 0);
     if (result.success) {
       await db.query('UPDATE players SET money = money - $1 WHERE id = $2', [amount, playerId]);
@@ -272,7 +264,6 @@ app.post('/api/gangs/contribute', async (req, res) => {
 });
 
 // ========== مسارات العقود الذكية ==========
-
 app.post('/api/contracts/create', async (req, res) => {
   const { playerId, contractData } = req.body;
   try {
@@ -291,19 +282,16 @@ app.post('/api/contracts/create', async (req, res) => {
     res.status(500).json({ success: false, message: 'Database error' });
   }
 });
-
 app.post('/api/contracts/accept', async (req, res) => {
   const { playerId, contractId } = req.body;
   const result = await contractSystem.acceptContract(contractId, playerId);
   res.json(result);
 });
-
 app.post('/api/contracts/reject', async (req, res) => {
   const { playerId, contractId } = req.body;
   const result = await contractSystem.rejectContract(contractId, playerId);
   res.json(result);
 });
-
 app.post('/api/contracts/execute', async (req, res) => {
   const { playerId, contractId, proof } = req.body;
   const result = await contractSystem.executeContract(contractId, playerId, proof);
@@ -312,7 +300,6 @@ app.post('/api/contracts/execute', async (req, res) => {
   }
   res.json(result);
 });
-
 app.post('/api/contracts/cancel', async (req, res) => {
   const { playerId, contractId } = req.body;
   const result = await contractSystem.cancelContract(contractId, playerId);
@@ -324,13 +311,11 @@ app.post('/api/contracts/cancel', async (req, res) => {
   }
   res.json(result);
 });
-
 app.get('/api/contracts/player/:playerId', async (req, res) => {
   const { filter } = req.query;
   const contracts = await contractSystem.getPlayerContracts(req.params.playerId, filter || 'all');
   res.json(contracts);
 });
-
 app.get('/api/contracts/:contractId', async (req, res) => {
   const contract = await contractSystem.getContract(req.params.contractId);
   if (contract) {
@@ -340,54 +325,59 @@ app.get('/api/contracts/:contractId', async (req, res) => {
   }
 });
 
-// ========== مسارات السوق السوداء ==========
+// ========== مسارات السوق السوداء (محسنة) ==========
 
+// جلب جميع العناصر المتاحة
 app.get('/api/market/items', (req, res) => {
   res.json(blackMarket.getItems());
 });
 
+// جلب العناصر حسب النوع
+app.get('/api/market/items/:type', (req, res) => {
+  const items = blackMarket.getItemsByType(req.params.type);
+  res.json(items);
+});
+
+// شراء عنصر
 app.post('/api/market/buy', async (req, res) => {
   const { playerId, itemId } = req.body;
   const result = await blackMarket.buyItem(playerId, itemId);
   res.json(result);
 });
 
+// بيع عنصر
 app.post('/api/market/sell', async (req, res) => {
   const { playerId, itemId } = req.body;
   const result = await blackMarket.sellItem(playerId, itemId);
   res.json(result);
 });
 
+// الحصول على مخزون اللاعب
 app.get('/api/market/inventory/:playerId', async (req, res) => {
   const inventory = await blackMarket.getPlayerInventory(req.params.playerId);
   res.json(inventory);
 });
 
-// ========== مسارات المعارك (Battle System) ==========
-
+// ========== مسارات المعارك ==========
 app.post('/api/battle/can-attack', async (req, res) => {
   const { attackerId, defenderId } = req.body;
   const result = await battleSystem.canAttack(attackerId, defenderId);
   res.json(result);
 });
-
 app.post('/api/battle/attack', async (req, res) => {
   const { attackerId, defenderId } = req.body;
   const result = await battleSystem.attack(attackerId, defenderId);
   res.json(result);
 });
-
 app.post('/api/battle/heal', async (req, res) => {
   const { playerId, amount } = req.body;
   const result = await battleSystem.heal(playerId, amount);
   res.json(result);
 });
-
 app.get('/api/battle/history/:playerId', async (req, res) => {
   const history = await battleSystem.getBattleHistory(req.params.playerId);
   res.json(history);
 });
-
 app.get('/api/battle/status/:playerId', async (req, res) => {
   const status = await battleSystem.getPlayerStatus(req.params.playerId);
   if (status) {
@@ -397,9 +387,7 @@ app.get('/api/battle/status/:playerId', async (req, res) => {
   }
 });
 
-// ========== مسارات الجولات (Rounds) - إضافة جديدة ==========
-
-// الحصول على معلومات الجولة الحالية
+// ========== مسارات الجولات ==========
 app.get('/api/rounds/current', async (req, res) => {
   const round = await roundSystem.getCurrentRound();
   if (round.success) {
@@ -408,15 +396,11 @@ app.get('/api/rounds/current', async (req, res) => {
     res.status(500).json(round);
   }
 });
-
-// إنشاء جولة جديدة يدوياً (للمسؤولين)
 app.post('/api/rounds/create', async (req, res) => {
   const { roundNumber, durationDays } = req.body;
   const result = await roundSystem.createRound(roundNumber, durationDays);
   res.json(result);
 });
-
-// الحصول على إحصائيات جولة معينة
 app.get('/api/rounds/:roundNumber/stats', async (req, res) => {
   const stats = await roundSystem.getRoundStats(req.params.roundNumber);
   res.json(stats);
@@ -425,7 +409,6 @@ app.get('/api/rounds/:roundNumber/stats', async (req, res) => {
 // الصفحة الرئيسية
 app.get('/', (req, res) => res.send('The Underworld API'));
 
-// بدء الخادم
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
