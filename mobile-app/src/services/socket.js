@@ -17,8 +17,6 @@ class SocketManager {
     
     this.socket.on('connect', () => {
       console.log('Connected to server');
-      // الانضمام للعبة بعد الاتصال
-      this.socket.emit('join-game', { playerId: userId, playerName: username });
     });
 
     this.socket.on('waiting', (msg) => {
@@ -56,6 +54,13 @@ class SocketManager {
   emit(event, data) {
     if (this.listeners[event]) {
       this.listeners[event].forEach(callback => callback(data));
+    }
+  }
+
+  // دالة جديدة للانضمام إلى لعبة
+  joinGame(playerId) {
+    if (this.socket) {
+      this.socket.emit('join-game', { playerId });
     }
   }
 
