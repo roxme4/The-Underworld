@@ -8,7 +8,8 @@ const Game = require('./utils/gameLogic.js');
 const GangSystem = require('./utils/gangSystem.js');
 const SmartContractSystem = require('./utils/smartContracts.js');
 const BlackMarket = require('./utils/blackMarket.js');
-const BattleSystem = require('./utils/battleSystem.js'); // ✅ إضافة نظام المعارك
+const BattleSystem = require('./utils/battleSystem.js');
+const RoundSystem = require('./utils/roundSystem.js'); // ✅ إضافة نظام الجولات
 const db = require('./db.js');
 
 const app = express();
@@ -24,7 +25,8 @@ let activeGames = {};                   // الألعاب النشطة
 const gangSystem = new GangSystem();     // نظام العصابات (يعمل مع DB)
 const contractSystem = new SmartContractSystem(); // نظام العقود (يعمل مع DB)
 const blackMarket = new BlackMarket();   // نظام السوق السوداء
-const battleSystem = new BattleSystem(); // ✅ نظام المعارك
+const battleSystem = new BattleSystem(); // نظام المعارك
+const roundSystem = new RoundSystem();   // ✅ نظام الجولات
 
 // ========== ربط socketId بمعرف اللاعب ==========
 const socketToPlayer = new Map();
@@ -206,28 +208,24 @@ app.get('/api/profile', async (req, res) => {
 
 // ========== مسارات العصابات (Gang System) ==========
 
-// إنشاء عصابة جديدة
 app.post('/api/gangs/create', async (req, res) => {
   const { playerId, gangName, playerName } = req.body;
   const result = await gangSystem.createGang(playerId, gangName, playerName);
   res.json(result);
 });
 
-// إرسال دعوة للانضمام إلى عصابة
 app.post('/api/gangs/invite', async (req, res) => {
   const { gangId, leaderId, targetPlayerId, targetPlayerName } = req.body;
   const result = await gangSystem.sendInvitation(gangId, leaderId, targetPlayerId, targetPlayerName);
   res.json(result);
 });
 
-// قبول دعوة
 app.post('/api/gangs/accept', async (req, res) => {
   const { playerId, gangId } = req.body;
   const result = await gangSystem.acceptInvitation(playerId, gangId);
   res.json(result);
 });
 
-// معلومات عصابة اللاعب
 app.get('/api/gangs/player/:playerId', async (req, res) => {
   const gang = await gangSystem.getPlayerGang(req.params.playerId);
   if (gang) {
@@ -237,7 +235,6 @@ app.get('/api/gangs/player/:playerId', async (req, res) => {
   }
 });
 
-// معلومات عصابة محددة
 app.get('/api/gangs/:gangId', async (req, res) => {
   const gang = await gangSystem.getGangInfo(req.params.gangId);
   if (gang) {
@@ -247,7 +244,6 @@ app.get('/api/gangs/:gangId', async (req, res) => {
   }
 });
 
-// إحصائيات عصابة
 app.get('/api/gangs/:gangId/stats', async (req, res) => {
   const stats = await gangSystem.getGangStats(req.params.gangId);
   if (stats) {
@@ -257,7 +253,6 @@ app.get('/api/gangs/:gangId/stats', async (req, res) => {
   }
 });
 
-// المساهمة في خزينة العصابة
 app.post('/api/gangs/contribute', async (req, res) => {
   const { playerId, gangId, amount } = req.body;
   try {
@@ -278,7 +273,6 @@ app.post('/api/gangs/contribute', async (req, res) => {
 
 // ========== مسارات العقود الذكية ==========
 
-// إنشاء عقد جديد
 app.post('/api/contracts/create', async (req, res) => {
   const { playerId, contractData } = req.body;
   try {
@@ -298,21 +292,18 @@ app.post('/api/contracts/create', async (req, res) => {
   }
 });
 
-// قبول عقد
 app.post('/api/contracts/accept', async (req, res) => {
   const { playerId, contractId } = req.body;
   const result = await contractSystem.acceptContract(contractId, playerId);
   res.json(result);
 });
 
-// رفض عقد
 app.post('/api/contracts/reject', async (req, res) => {
   const { playerId, contractId } = req.body;
   const result = await contractSystem.rejectContract(contractId, playerId);
   res.json(result);
 });
 
-// تنفيذ عقد
 app.post('/api/contracts/execute', async (req, res) => {
   const { playerId, contractId, proof } = req.body;
   const result = await contractSystem.executeContract(contractId, playerId, proof);
@@ -322,7 +313,6 @@ app.post('/api/contracts/execute', async (req, res) => {
   res.json(result);
 });
 
-// إلغاء عقد
 app.post('/api/contracts/cancel', async (req, res) => {
   const { playerId, contractId } = req.body;
   const result = await contractSystem.cancelContract(contractId, playerId);
@@ -335,14 +325,12 @@ app.post('/api/contracts/cancel', async (req, res) => {
   res.json(result);
 });
 
-// الحصول على عقود لاعب
 app.get('/api/contracts/player/:playerId', async (req, res) => {
   const { filter } = req.query;
   const contracts = await contractSystem.getPlayerContracts(req.params.playerId, filter || 'all');
   res.json(contracts);
 });
 
-// تفاصيل عقد
 app.get('/api/contracts/:contractId', async (req, res) => {
   const contract = await contractSystem.getContract(req.params.contractId);
   if (contract) {
@@ -354,26 +342,22 @@ app.get('/api/contracts/:contractId', async (req, res) => {
 
 // ========== مسارات السوق السوداء ==========
 
-// جلب جميع العناصر المتاحة
 app.get('/api/market/items', (req, res) => {
   res.json(blackMarket.getItems());
 });
 
-// شراء عنصر
 app.post('/api/market/buy', async (req, res) => {
   const { playerId, itemId } = req.body;
   const result = await blackMarket.buyItem(playerId, itemId);
   res.json(result);
 });
 
-// بيع عنصر
 app.post('/api/market/sell', async (req, res) => {
   const { playerId, itemId } = req.body;
   const result = await blackMarket.sellItem(playerId, itemId);
   res.json(result);
 });
 
-// الحصول على مخزون اللاعب
 app.get('/api/market/inventory/:playerId', async (req, res) => {
   const inventory = await blackMarket.getPlayerInventory(req.params.playerId);
   res.json(inventory);
@@ -381,34 +365,29 @@ app.get('/api/market/inventory/:playerId', async (req, res) => {
 
 // ========== مسارات المعارك (Battle System) ==========
 
-// التحقق من إمكانية الهجوم
 app.post('/api/battle/can-attack', async (req, res) => {
   const { attackerId, defenderId } = req.body;
   const result = await battleSystem.canAttack(attackerId, defenderId);
   res.json(result);
 });
 
-// تنفيذ هجوم
 app.post('/api/battle/attack', async (req, res) => {
   const { attackerId, defenderId } = req.body;
   const result = await battleSystem.attack(attackerId, defenderId);
   res.json(result);
 });
 
-// استعادة نقاط الحياة
 app.post('/api/battle/heal', async (req, res) => {
   const { playerId, amount } = req.body;
   const result = await battleSystem.heal(playerId, amount);
   res.json(result);
 });
 
-// الحصول على سجل معارك اللاعب
 app.get('/api/battle/history/:playerId', async (req, res) => {
   const history = await battleSystem.getBattleHistory(req.params.playerId);
   res.json(history);
 });
 
-// الحصول على حالة اللاعب (بما في ذلك HP)
 app.get('/api/battle/status/:playerId', async (req, res) => {
   const status = await battleSystem.getPlayerStatus(req.params.playerId);
   if (status) {
@@ -416,6 +395,31 @@ app.get('/api/battle/status/:playerId', async (req, res) => {
   } else {
     res.status(404).json({ error: 'Player not found' });
   }
+});
+
+// ========== مسارات الجولات (Rounds) - إضافة جديدة ==========
+
+// الحصول على معلومات الجولة الحالية
+app.get('/api/rounds/current', async (req, res) => {
+  const round = await roundSystem.getCurrentRound();
+  if (round.success) {
+    res.json(round);
+  } else {
+    res.status(500).json(round);
+  }
+});
+
+// إنشاء جولة جديدة يدوياً (للمسؤولين)
+app.post('/api/rounds/create', async (req, res) => {
+  const { roundNumber, durationDays } = req.body;
+  const result = await roundSystem.createRound(roundNumber, durationDays);
+  res.json(result);
+});
+
+// الحصول على إحصائيات جولة معينة
+app.get('/api/rounds/:roundNumber/stats', async (req, res) => {
+  const stats = await roundSystem.getRoundStats(req.params.roundNumber);
+  res.json(stats);
 });
 
 // الصفحة الرئيسية

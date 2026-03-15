@@ -20,6 +20,7 @@ const GameScreen = ({ route, navigation }) => {
   const [waiting, setWaiting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [roundInfo, setRoundInfo] = useState(null); // ✅ حالة الجولة
 
   // جلب حالة اللاعب من الخادم
   const fetchPlayerStatus = async () => {
@@ -34,8 +35,22 @@ const GameScreen = ({ route, navigation }) => {
     }
   };
 
+  // جلب معلومات الجولة الحالية
+  const fetchRoundInfo = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/rounds/current');
+      const data = await response.json();
+      if (data.success) {
+        setRoundInfo(data.round);
+      }
+    } catch (error) {
+      console.error('Error fetching round:', error);
+    }
+  };
+
   useEffect(() => {
     fetchPlayerStatus();
+    fetchRoundInfo(); // ✅ جلب معلومات الجولة عند تحميل الشاشة
   }, []);
 
   useEffect(() => {
@@ -139,6 +154,16 @@ const GameScreen = ({ route, navigation }) => {
         <Text style={styles.title}>⚡ THE UNDERWORLD ⚡</Text>
         <Text style={styles.welcome}>مرحباً، {username}</Text>
       </View>
+
+      {/* ✅ معلومات الجولة */}
+      {roundInfo && (
+        <View style={styles.roundInfo}>
+          <Text style={styles.roundText}>🎯 الجولة رقم: {roundInfo.round_number}</Text>
+          <Text style={styles.roundText}>
+            ⏳ تنتهي: {new Date(roundInfo.end_time).toLocaleDateString('ar-EG')}
+          </Text>
+        </View>
+      )}
 
       {/* معلومات اللاعب */}
       <View style={styles.playerInfo}>
@@ -277,6 +302,19 @@ const styles = StyleSheet.create({
   welcome: {
     color: '#fff',
     fontSize: 18,
+  },
+  roundInfo: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#333',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  roundText: {
+    color: '#FFD700',
+    fontSize: 14,
+    marginBottom: 2,
   },
   playerInfo: {
     margin: 20,
